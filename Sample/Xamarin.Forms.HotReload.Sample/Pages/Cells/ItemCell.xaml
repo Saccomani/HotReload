@@ -6,9 +6,9 @@
     
     <StackLayout Orientation="Horizontal"
                  Padding="15, 10"
-                 Spacing="30"> 
+                 Spacing="90"> 
         
-        <Frame Padding="0" WidthRequest="160" 
+        <Frame Padding="0" WidthRequest="30" 
                HeightRequest="160" 
                CornerRadius="80"
                IsClippedToBounds="true">

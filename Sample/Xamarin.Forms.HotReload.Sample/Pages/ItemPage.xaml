@@ -12,12 +12,12 @@
         <ResourceDictionary Source="../ResDict.xaml" />
     </ContentPage.Resources>
     
-    <StackLayout>
+    <StackLayout BackgroundColor="Green">
         <Image Source="{Binding ImageUrl}" Aspect="AspectFill"
                HorizontalOptions="FillAndExpand"
                VerticalOptions="FillAndExpand"/>
         <ScrollView VerticalOptions="FillAndExpand"
-                    Padding="15, 0">
+                    Padding="15,0">
             <StackLayout>
                 <Label Text="{Binding Team}" StyleClass="TeamLabel"/>
                 <Label Text="{Binding Description}" FontSize="Large"/>

@@ -114,7 +114,7 @@ namespace Xamarin.Forms
                           .Where(x => x.ToString() != "127.0.0.1")
                           .ToArray();
 
-            foreach (var addr in addresses)
+			foreach (var addr in addresses)
             {
                 Console.WriteLine($"### [OLD] HOTRELOAD DEVICE's IP: {addr} ###");
             }

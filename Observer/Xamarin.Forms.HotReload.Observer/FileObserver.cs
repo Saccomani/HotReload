@@ -27,107 +27,115 @@ namespace Xamarin.Forms.HotReload.Observer
         [PermissionSet(SecurityAction.Demand, Name = "FullTrust")]
         private static void Run()
         {
-            var addresses = NetworkInterface.GetAllNetworkInterfaces()
-                .SelectMany(x => x.GetIPProperties().UnicastAddresses)
-                .Where(x => x.Address.AddressFamily == AddressFamily.InterNetwork)
-                .Select(x => x.Address.MapToIPv4())
-                .Where(x => x.ToString() != "127.0.0.1")
-                .ToArray();
 
-            var ip = addresses.FirstOrDefault()?.ToString() ?? "127.0.0.1";
+			try
+			{
+				var addresses = NetworkInterface.GetAllNetworkInterfaces()
+				.SelectMany(x => x.GetIPProperties().UnicastAddresses)
+				.Where(x => x.Address.AddressFamily == AddressFamily.InterNetwork)
+				.Select(x => x.Address.MapToIPv4())
+				.Where(x => x.ToString() != "127.0.0.1")
+				.ToArray();
 
-            var args = Environment.GetCommandLineArgs();
-            var path = RetrieveCommandLineArgument("p=", Environment.CurrentDirectory, args);
-            var url = RetrieveCommandLineArgument("u=", $"http://{ip}:8000", args);
-            var autoDiscoveryPort = RetrieveCommandLineArgument("a=", "15000", args);
+				var ip = addresses.FirstOrDefault()?.ToString() ?? "127.0.0.1";
 
-            try
-            {
-                Directory.GetDirectories(path);
-            }
-            catch
-            {
-                Console.WriteLine("MAKE SURE YOU PASSED RIGHT PATH TO PROJECT DIRECTORY AS 'P={PATH}' ARGUMENT.");
-                Console.ReadKey();
-                return;
-            }
+				var args = Environment.GetCommandLineArgs();
+				var path = RetrieveCommandLineArgument("p=", Environment.CurrentDirectory, args);
+				var url = RetrieveCommandLineArgument("u=", $"http://{ip}:8000", args);
+				var autoDiscoveryPort = RetrieveCommandLineArgument("a=", "1700", args);
 
-            foreach (var addr in url.Split(new char[] { ',', ';' }))
-            {
-                if (!Uri.IsWellFormedUriString(addr, UriKind.Absolute))
-                {
-                    Console.WriteLine("MAKE SURE YOU PASSED RIGHT DEVICE URL AS 'U={DEVICE_URL}' OR AS 'U={DEVICE_URL,DEVICE_URL2,...}' ARGUMENT.");
-                    Console.ReadKey();
-                    return;
-                }
-
-                _addresses.Add(addr);
-            }
-
-            UdpReceiver receiver = null;
-            try
-            {
-                receiver = new UdpReceiver(int.Parse(autoDiscoveryPort));
-                receiver.Received += (addressMsg) =>
-                {
-                    //TODO: pick needed address
-                    var address = addressMsg.Split(';').FirstOrDefault();
-                    if (address != null)
-                    {
-                        if (!_addresses.Contains(address))
-                        {
-                            Console.WriteLine($"ADDRESS IS DETECTED: {address}");
-                            _addresses.Add(address);
-                        }
-                    }
-                };
-                receiver.StartAsync();
-            }
-            catch
-            {
-                Console.WriteLine("MAKE SURE YOU PASSED RIGHT AUTO DISCOVERY RECEIVER PORT AS 'A={PORT}' ARGUMENT.");
-                Console.ReadKey();
-                return;
-            }
-
-            Console.WriteLine($"\n\n> HOTRELOADER STARTED AT {DateTime.Now}");
-            Console.WriteLine($"\n> PATH: {path}");
-            Console.WriteLine($"\n> AUTO DISCOVERY PORT: {autoDiscoveryPort}");
-
-            foreach (var addr in _addresses)
-            {
-                Console.WriteLine($"\n> URL: {addr}\n");
-            }
+				try
+				{
+					Directory.GetDirectories(path);
+				}
+				catch (Exception ex)
+				{
+					Console.WriteLine("[EXCEPTION] : " + ex.ToString());
+					return;
+				}
 
 
-            _client = new HttpClient();
+				foreach (var addr in url.Split(new char[] { ',', ';' }))
+				{
+					if (!Uri.IsWellFormedUriString(addr, UriKind.Absolute))
+					{
+						Console.WriteLine("MAKE SURE YOU PASSED RIGHT DEVICE URL AS 'U={DEVICE_URL}' OR AS 'U={DEVICE_URL,DEVICE_URL2,...}' ARGUMENT.");
+						Console.ReadKey();
+						return;
+					}
 
-            foreach (var fileExtension in _supportedFileExtensions)
-            {
-                var observer = new FileSystemWatcher
-                {
-                    Path = path,
-                    NotifyFilter = NotifyFilters.LastWrite |
-                        NotifyFilters.Attributes |
-                        NotifyFilters.Size |
-                        NotifyFilters.CreationTime |
-                        NotifyFilters.FileName,
-                    Filter = $"*{fileExtension}",
-                    EnableRaisingEvents = true,
-                    IncludeSubdirectories = true
-                };
+					_addresses.Add(addr);
+				}
 
-                observer.Changed += OnFileChanged;
-                observer.Created += OnFileChanged;
-                observer.Renamed += OnFileChanged;
-            }
+				UdpReceiver receiver = null;
+				try
+				{
+					receiver = new UdpReceiver(int.Parse(autoDiscoveryPort));
+					receiver.Received += (addressMsg) =>
+					{
+						//TODO: pick needed address
+						var address = addressMsg.Split(';').FirstOrDefault();
+						if (address != null)
+						{
+							if (!_addresses.Contains(address))
+							{
+								Console.WriteLine($"ADDRESS IS DETECTED: {address}");
+								_addresses.Add(address);
+							}
+						}
+					};
+					receiver.StartAsync();
+				}
+				catch
+				{
+					Console.WriteLine("MAKE SURE YOU PASSED RIGHT AUTO DISCOVERY RECEIVER PORT AS 'A={PORT}' ARGUMENT.");
+					Console.ReadKey();
+					return;
+				}
 
-            do
-            {
-                Console.WriteLine("\nPRESS \'ESC\' TO STOP.");
-            } while (Console.ReadKey().Key != ConsoleKey.Escape);
+				Console.WriteLine($"\n\n> HOTRELOADER STARTED AT {DateTime.Now}");
+				Console.WriteLine($"\n> PATH: {path}");
+				Console.WriteLine($"\n> AUTO DISCOVERY PORT: {autoDiscoveryPort}");
 
-            receiver.Stop();
+				foreach (var addr in _addresses)
+				{
+					Console.WriteLine($"\n> URL: {addr}\n");
+				}
+
+				_client = new HttpClient();
+
+				foreach (var fileExtension in _supportedFileExtensions)
+				{
+					var observer = new FileSystemWatcher
+					{
+						Path = path,
+						NotifyFilter = NotifyFilters.LastWrite |
+							NotifyFilters.Attributes |
+							NotifyFilters.Size |
+							NotifyFilters.CreationTime |
+							NotifyFilters.FileName,
+						Filter = $"*{fileExtension}",
+						EnableRaisingEvents = true,
+						IncludeSubdirectories = true
+					};
+
+					observer.Changed += OnFileChanged;
+					observer.Created += OnFileChanged;
+					observer.Renamed += OnFileChanged;
+				}
+
+				do
+				{
+					Console.WriteLine("\nPRESS \'ESC\' TO STOP.");
+				} while (Console.ReadKey().Key != ConsoleKey.Escape);
+
+				receiver.Stop();
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine("[EXCEPTION] : " + ex.ToString());
+			}
+			
         }
 
         private static string RetrieveCommandLineArgument(string key, string defaultValue, string[] args)
@@ -138,40 +146,56 @@ namespace Xamarin.Forms.HotReload.Observer
 
         private static void OnFileChanged(object source, FileSystemEventArgs e)
         {
-            var filePath = e.FullPath.Replace("/.#", "/");
-            var now = DateTime.Now;
-            lock (_locker)
-            {
-                if (Abs((now - _lastChangeTime).TotalMilliseconds) < 900 ||
-                    _supportedFileExtensions.All(fileExt => !filePath.EndsWith(fileExt, StringComparison.OrdinalIgnoreCase)))
-                {
-                    return;
-                }
-                _lastChangeTime = now;
-            }
-            Console.WriteLine($"CHANGED {now}: {filePath}");
-            SendFile(filePath);
-        }
+			try
+			{
+				var filePath = e.FullPath.Replace("/.#", "/");
+				var now = DateTime.Now;
+				lock (_locker)
+				{
+					if (Abs((now - _lastChangeTime).TotalMilliseconds) < 900 ||
+						_supportedFileExtensions.All(fileExt => !filePath.EndsWith(fileExt, StringComparison.OrdinalIgnoreCase)))
+					{
+						return;
+					}
+					_lastChangeTime = now;
+				}
+				Console.WriteLine($"CHANGED {now}: {filePath}");
+				SendFile(filePath);
+			}
+			catch (Exception ex)
+			{
+				Console.WriteLine("[EXCEPTION] : " + ex.ToString());
+			}
+		}
 
         private static async void SendFile(string filePath)
         {
             try
             {
-                var escapedFilePath = Uri.EscapeDataString(filePath);
-                var xaml = File.ReadAllText(filePath);
-                var data = Encoding.UTF8.GetBytes(xaml);
-                using (var content = new ByteArrayContent(data))
-                {
-                    var sendTasks = _addresses.Select(addr => _client.PostAsync($"{addr}/reload?path={escapedFilePath}", content)).ToArray();
+				using (StreamReader sr = File.OpenText(filePath))
+				{
+					Console.WriteLine("Reading file : " + filePath);
 
-                    await Task.WhenAll(sendTasks).ConfigureAwait(false);
-                }
+					var escapedFilePath = Uri.EscapeDataString(filePath);
+					var line = sr.ReadToEnd();
+					sr.Close();
+
+					Console.WriteLine("Stream closed");
+					var xaml = line;// File.ReadAllText(filePath);
+					var data = Encoding.UTF8.GetBytes(xaml);
+					using (var content = new ByteArrayContent(data))
+					{
+						var sendTasks = _addresses.Select(addr => _client.PostAsync($"{addr}/reload?path={escapedFilePath}", content)).ToArray();
+						await Task.WhenAll(sendTasks).ConfigureAwait(false);
+					}
+					Console.WriteLine("Finish");
+				} 
             }
-            catch (HttpRequestException)
-            {
-                Console.WriteLine("ERROR: NO CONNECTION.");
-            }
-        }
+			catch (Exception ex)
+			{
+				Console.WriteLine("[EXCEPTION IN SEND FILE] :" + ex.ToString());
+			}
+		}
     }
 
     internal sealed class UdpReceiver
